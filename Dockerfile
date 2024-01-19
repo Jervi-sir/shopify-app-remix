@@ -28,4 +28,4 @@ COPY --from=builder /app .
 USER remix
 EXPOSE 3000
 ENV PORT 3000
-CMD ["npm", "run", "docker-start"]
+CMD ["npm", "run", "start"]
