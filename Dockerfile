@@ -1,22 +1,26 @@
-FROM node:18-alpine
+FROM node:18-alpine AS base
 
-EXPOSE 3000
-
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm run build && npm cache clean --force
 
-ENV NODE_ENV=production
+FROM base AS runner
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 remix
+COPY --from=builder /app .
+USER remix
+EXPOSE 3000
+ENV PORT 3000
 
-#RUN npm install --omit=dev
-RUN npm i -g @shopify/app-bridge-types
-RUN npm install
-# Remove CLI packages since we don't need them in production by default.
-# Remove this line if you want to run CLI commands in your container.
-#RUN npm remove @shopify/app @shopify/cli
-
-RUN npm run build
-
-# You'll probably want to remove this in production, it's here to make it easier to test things!
 RUN rm -f prisma/dev.sqlite
 
-CMD ["npm", "run", "docker-start"]
+CMD ["npm", "run", "start"]
